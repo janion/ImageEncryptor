@@ -4,9 +4,17 @@ Created on 13 Mar 2016
 @author: Janion
 '''
 
+# Split into objects
+# Do maths on diagonal
+# Save images
+
 import wx
 import Image
 import os
+import random
+import threading
+
+from ProgressBar import GaugeFrame
 
 ################################################################################
 ################################################################################
@@ -17,13 +25,12 @@ class Window(wx.Frame):
              "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", " ", "#"
              ]
     
-    imgTypes = "JPEG Image (*.jpg)|*.jpg|"     \
-               "Bitmap Image (*.bmp)|*.bmp|" \
+    imgTypes = "JPEG Image (*.jpg)|*.jpg|"\
+               "Bitmap Image (*.bmp)|*.bmp|"\
                "All files (*.*)|*.*"
                
     dir = os.getcwd()
     img = None
-    maxSize = 700.
     display = None
     
     def __init__(self, parent, idd, title):
@@ -72,117 +79,122 @@ class Window(wx.Frame):
         self.Bind(wx.EVT_MENU, self.decryptImage, id=302)
         
 ################################################################################
+    
+    def randomHashThread(self):
+        
+        size = self.img.size
+        newImg = Image.new('RGB', size, "black")
+        
+        (r, g, b) = (5, 13, 31)
+        seed = int(str(r) + str(g) + str(b))
+        random.seed(seed)
+        
+        positions = []
+        
+        for x in xrange(size[0]):
+            for y in xrange(size[1]):
+                positions.append((x, y))
+        
+        for x in xrange(size[0]):
+            print x
+            for y in xrange(size[1]):
+                oldColour = self.img.getpixel((x, y))
+                (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
+                
+                newImg.putpixel((xx, yy), oldColour)
+                wx.CallAfter(self.gFr.updateGauge, int(float(x) / size[0]))
+                
+                if self.gFr.GetTitle() == "Cancelling...":
+                    break
+            if self.gFr.GetTitle() == "Cancelling...":
+                break
+        wx.CallAfter(self.GetMenuBar().Enable)
+        
+        newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
+        
+        if not self.gFr.GetTitle() == "Cancelling...":
+            wx.CallAfter(self.gFr.Destroy)
+            self.img = newImg
+            self.showImage()
+        else:
+            wx.CallAfter(self.gFr.Destroy)
+        
+################################################################################
+    
+    def randomHash(self):
+        
+        size = self.img.size
+        newImg = Image.new('RGB', size, "black")
+        
+        (r, g, b) = (5, 13, 31)
+        seed = int(str(r) + str(g) + str(b))
+        random.seed(seed)
+        
+        positions = []
+        
+        for x in xrange(size[0]):
+            for y in xrange(size[1]):
+                positions.append((x, y))
+        
+        for x in xrange(size[0]):
+            print x
+            for y in xrange(size[1]):
+                oldColour = self.img.getpixel((x, y))
+                (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
+                
+                newImg.putpixel((xx, yy), oldColour)
+        
+        newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
+        
+        self.img = newImg
+        self.showImage()
+        
+################################################################################
+    
+    def randomDehash(self):
+        
+        size = self.img.size
+        newImg = Image.new('RGB', size, "black")
+        
+        (r, g, b) = self.img.getpixel((size[0] - 1, size[1] - 1))
+        seed = int(str(r) + str(g) + str(b))
+        random.seed(seed)
+        
+        positions = []
+        
+        for x in xrange(size[0]):
+            for y in xrange(size[1]):
+                positions.append((x, y))
+        
+        for x in xrange(size[0]):
+            print x
+            for y in xrange(size[1]):
+                (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
+                oldColour = self.img.getpixel((xx, yy))
+                
+                newImg.putpixel((x, y), oldColour)
+        
+        self.img = newImg
+        self.showImage()
+        
+################################################################################
 
     def decryptImage(self, event):
         
-        (width, height) = self.img.size
-        
-        (v, h, d) = self.img.getpixel((width - 1, height - 1))
-        
-        self.diagonalShift(-d)
-        self.horizontalShift(-h)
-        self.verticalShift(-v)
-        
-        self.showImage()
+        self.randomDehash()
         
 ################################################################################
 
     def encryptImage(self, event):
         
-        (width, height) = self.img.size
+#         self.gFr = GaugeFrame(self, title="0%", maximum=100)
+#         self.gFr.Show()
+#         self.gFr.Center()
+#         self.GetMenuBar().Disable()
+#         workThread = threading.Thread(target=self.randomHashThread(), args=() )
+#         workThread.start()
         
-        v = 14
-        h = 127
-        d = 0
-        
-        self.verticalShift(v)
-        self.horizontalShift(h)
-        self.diagonalShift(d)
-        
-        self.img.putpixel((width - 1, height - 1), (v, h, d))
-        
-        self.showImage()
-        
-################################################################################
-    
-    def horizontalShift(self, shift):
-        
-        size = self.img.size
-        newImg = Image.new('RGB', size, "black")
-         
-        xShift = shift
-        for y in xrange(size[1]):
-            for x in xrange(size[0]):
-                oldColour = self.img.getpixel((x, y))
-                xx = (x + xShift) % size[0]
-                if xx < 0:
-                    xx += size[10]
-                newImg.putpixel((xx, y), oldColour)
-            xShift += shift
-         
-        self.img = newImg
-        
-################################################################################
-    
-    def verticalShift(self, shift):
-        
-        size = self.img.size
-        newImg = Image.new('RGB', size, "black")
-          
-        yShift = shift
-        for x in xrange(size[0]):
-            for y in xrange(size[1]):
-                oldColour = self.img.getpixel((x, y))
-                yy = (y + yShift) % size[1]
-                if yy < 0:
-                    yy += size[1]
-                newImg.putpixel((x, yy), oldColour)
-            yShift += shift
-          
-        self.img = newImg
-        
-################################################################################
-    
-    def diagonalShift(self, shift):
-        
-        size = self.img.size
-        # TODO do the maths
-        
-#         diags = []
-#         
-#         for yy in xrange(size[1] - 1, -1, -1):
-#             diag = []
-#             x = 0
-#             y = yy
-#             while(x < size[0] and y < size[1]):
-#                 diag.append((x, y))
-#                 x += 1
-#                 y += 1
-#             diags.append(diag)
-#         
-#         for xx in xrange(1, size[0]):
-#             diag = []
-#             x = xx
-#             y = 0
-#             while(x < size[0] and y < size[1]):
-#                 diag.append((x, y))
-#                 x += 1
-#                 y += 1
-#             diags.append(diag)
-#                 
-#         newImg = Image.new('RGB', size, "black")
-#           
-#         for x in xrange(size[0]):
-#             for y in xrange(size[1]):        
-#                 oldColour = self.img.getpixel((x, y))
-#                  
-#                 for diag in diags:
-#                     if (x, y) in diag:
-#                         (xx, yy) = diag[(diag.index((x, y)) + shift) % len(diag)]
-#                 
-#                 newImg.putpixel((xx, yy), oldColour)
-#           
-#         self.img = newImg
+        self.randomHash()
         
 ################################################################################
 
