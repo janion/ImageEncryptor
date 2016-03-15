@@ -47,30 +47,30 @@ class Window(wx.Frame):
 ################################################################################
             
     def setupMenu(self):
-        menuBar = wx.MenuBar()
+        self.menuBar = wx.MenuBar()
         
         menu1 = wx.Menu()
         menu1.Append(101, "Open image")
         menu1.Append(102, "Save image")
         menu1.AppendSeparator()
         menu1.Append(103, "Quit")
-        menuBar.Append(menu1, "File")
+        self.menuBar.Append(menu1, "File")
         
         menu2 = wx.Menu()
         menu2.Append(201, "Add message")
         menu2.Append(202, "Encrypt entire image")
         menu2.AppendSeparator()
         menu2.Append(203, "Reset image")
-        menuBar.Append(menu2, "Encrypt")
+        self.menuBar.Append(menu2, "Encrypt")
         
         menu3 = wx.Menu()
         menu3.Append(301, "Read message")
         menu3.Append(302, "Decrypt entire image")
         menu3.AppendSeparator()
         menu3.Append(303, "Reset image")
-        menuBar.Append(menu3, "Decrypt")
+        self.menuBar.Append(menu3, "Decrypt")
         
-        self.SetMenuBar(menuBar)
+        self.SetMenuBar(self.menuBar)
         
         self.Bind(wx.EVT_MENU, self.openImage, id=101)
         self.Bind(wx.EVT_MENU, self.encryptMessage, id=201)
@@ -96,62 +96,30 @@ class Window(wx.Frame):
                 positions.append((x, y))
         
         for x in xrange(size[0]):
-            print x
             for y in xrange(size[1]):
                 oldColour = self.img.getpixel((x, y))
                 (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
                 
                 newImg.putpixel((xx, yy), oldColour)
-                wx.CallAfter(self.gFr.updateGauge, int(float(x) / size[0]))
+                wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
                 
-                if self.gFr.GetTitle() == "Cancelling...":
+                if self.progressDlg.GetTitle() == "Cancelling...":
                     break
-            if self.gFr.GetTitle() == "Cancelling...":
+            if self.progressDlg.GetTitle() == "Cancelling...":
                 break
-        wx.CallAfter(self.GetMenuBar().Enable)
         
         newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
         
-        if not self.gFr.GetTitle() == "Cancelling...":
-            wx.CallAfter(self.gFr.Destroy)
+        if not self.progressDlg.GetTitle() == "Cancelling...":
+            wx.CallAfter(self.progressDlg.Destroy)
             self.img = newImg
-            self.showImage()
+            wx.CallAfter(self.showImage)
         else:
-            wx.CallAfter(self.gFr.Destroy)
+            wx.CallAfter(self.progressDlg.Destroy)
         
 ################################################################################
     
-    def randomHash(self):
-        
-        size = self.img.size
-        newImg = Image.new('RGB', size, "black")
-        
-        (r, g, b) = (5, 13, 31)
-        seed = int(str(r) + str(g) + str(b))
-        random.seed(seed)
-        
-        positions = []
-        
-        for x in xrange(size[0]):
-            for y in xrange(size[1]):
-                positions.append((x, y))
-        
-        for x in xrange(size[0]):
-            print x
-            for y in xrange(size[1]):
-                oldColour = self.img.getpixel((x, y))
-                (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
-                
-                newImg.putpixel((xx, yy), oldColour)
-        
-        newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
-        
-        self.img = newImg
-        self.showImage()
-        
-################################################################################
-    
-    def randomDehash(self):
+    def randomDehashThread(self):
         
         size = self.img.size
         newImg = Image.new('RGB', size, "black")
@@ -167,34 +135,44 @@ class Window(wx.Frame):
                 positions.append((x, y))
         
         for x in xrange(size[0]):
-            print x
             for y in xrange(size[1]):
                 (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
                 oldColour = self.img.getpixel((xx, yy))
                 
                 newImg.putpixel((x, y), oldColour)
+                wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
+                
+                if self.progressDlg.GetTitle() == "Cancelling...":
+                    break
+            if self.progressDlg.GetTitle() == "Cancelling...":
+                break
         
-        self.img = newImg
-        self.showImage()
+        if not self.progressDlg.GetTitle() == "Cancelling...":
+            wx.CallAfter(self.progressDlg.Destroy)
+            self.img = newImg
+            wx.CallAfter(self.showImage)
+        else:
+            wx.CallAfter(self.progressDlg.Destroy)
         
 ################################################################################
 
     def decryptImage(self, event):
         
-        self.randomDehash()
+        self.progressDlg = GaugeFrame(self, title="0%", maximum=100)
+        self.progressDlg.Show()
+        self.progressDlg.Center()
+        workThread = threading.Thread(target=self.randomDehashThread, args=() )
+        workThread.start()
         
 ################################################################################
 
     def encryptImage(self, event):
         
-#         self.gFr = GaugeFrame(self, title="0%", maximum=100)
-#         self.gFr.Show()
-#         self.gFr.Center()
-#         self.GetMenuBar().Disable()
-#         workThread = threading.Thread(target=self.randomHashThread(), args=() )
-#         workThread.start()
-        
-        self.randomHash()
+        self.progressDlg = GaugeFrame(self, title="0%", maximum=100)
+        self.progressDlg.Show()
+        self.progressDlg.Center()
+        workThread = threading.Thread(target=self.randomHashThread, args=() )
+        workThread.start()
         
 ################################################################################
 
