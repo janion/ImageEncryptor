@@ -18,6 +18,9 @@ import Image
 import os
 import random
 import threading
+import numpy as np
+from scipy.misc import fromimage
+from scipy.misc import toimage
 
 from ProgressBar import GaugeFrame
 
@@ -86,52 +89,99 @@ class Window(wx.Frame):
 ################################################################################
     
     def randomHashThread(self):
-        
+         
         size = self.img.size
-        newImg = Image.new('RGB', size, "black")
-#         pxlMap = self.img.load()
-#         newp = [0] * size[0] * size[1]
-        
+        data = fromimage(self.img)
+        newData = np.zeros((size[1], size[0], 3))
+         
         (r, g, b) = (5, 13, 31)
         seed = int(str(r) + str(g) + str(b))
         random.seed(seed)
-        
+         
         positions = []
-        
         for x in xrange(size[0]):
             for y in xrange(size[1]):
                 positions.append((x, y))
-        
+         
         for x in xrange(size[0]):
+            print x
             for y in xrange(size[1]):
                 (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
-                (R, G, B) = self.img.getpixel((x, y))
-#                 (R, G, B) = pxlMap[x, y]
-                 
+                (R, G, B) = data[y, x]
+                  
                 if ((x + y) % 3) == 0:
                     oldColour = (R, G, B)
                 elif ((x + y) % 3) == 1:
                     oldColour = (G, B, R)
                 else:
                     oldColour = (B, R, G)
-                     
-                newImg.putpixel((xx, yy), oldColour)
-#                 newp[xx + yy * size[0]] = oldColour
-                
+                       
+                newData[yy, xx] = oldColour
+                 
                 if self.progressDlg.GetTitle() == "Cancelling...":
                     break
-            
+             
             wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
             if self.progressDlg.GetTitle() == "Cancelling...":
                 break
-        
+         
         if not self.progressDlg.GetTitle() == "Cancelling...":
-#             newImg.putdata(newp)
-            newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
-            self.img = newImg
+            self.img = toimage(newData)
+            self.img.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
             wx.CallAfter(self.showImage)
-       
+        
         wx.CallAfter(self.progressDlg.Destroy)
+        
+################################################################################
+    
+#     def randomHashThread(self):
+#          
+#         size = self.img.size
+#         newImg = Image.new('RGB', size, "black")
+# #         pxlMap = self.img.load()
+# #         newp = [0] * size[0] * size[1]
+#          
+#         (r, g, b) = (5, 13, 31)
+#         seed = int(str(r) + str(g) + str(b))
+#         random.seed(seed)
+#          
+#         positions = []
+#          
+#         for x in xrange(size[0]):
+#             for y in xrange(size[1]):
+#                 positions.append((x, y))
+#          
+#         for x in xrange(size[0]):
+#             print x
+#             for y in xrange(size[1]):
+#                 (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
+#                 (R, G, B) = self.img.getpixel((x, y))
+# #                 (R, G, B) = pxlMap[x, y]
+#                   
+#                 if ((x + y) % 3) == 0:
+#                     oldColour = (R, G, B)
+#                 elif ((x + y) % 3) == 1:
+#                     oldColour = (G, B, R)
+#                 else:
+#                     oldColour = (B, R, G)
+#                       
+#                 newImg.putpixel((xx, yy), oldColour)
+# #                 newp[xx + yy * size[0]] = oldColour
+#                  
+#                 if self.progressDlg.GetTitle() == "Cancelling...":
+#                     break
+#              
+#             wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
+#             if self.progressDlg.GetTitle() == "Cancelling...":
+#                 break
+#          
+#         if not self.progressDlg.GetTitle() == "Cancelling...":
+# #             newImg.putdata(newp)
+#             newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
+#             self.img = newImg
+#             wx.CallAfter(self.showImage)
+#         
+#         wx.CallAfter(self.progressDlg.Destroy)
         
 ################################################################################
     
