@@ -22,8 +22,9 @@ class GaugeFrame(wx.MiniFrame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, self.cancelBtn)
 
     def updateGauge(self, value):
-        self.bar.SetValue(value)
-        self.SetTitle("%d%%" % value)
+        if self.GetTitle() != "Cancelling...":
+            self.bar.SetValue(value)
+            self.SetTitle("%d%%" % value)
 
     def onCancel(self, e):
         self.SetTitle("Cancelling...")

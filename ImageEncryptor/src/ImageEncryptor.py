@@ -4,9 +4,14 @@ Created on 13 Mar 2016
 @author: Janion
 '''
 
-# Split into objects
-# Do maths on diagonal
+# Use pixelArray = Image.load()
+# self.img.putdata(pixelArray)
+# Maybe don't event need to put data
+
+# Allow user to create key and don't store it in the image
+# Faster way to encrypt image?
 # Save images
+# Split into objects
 
 import wx
 import Image
@@ -84,6 +89,8 @@ class Window(wx.Frame):
         
         size = self.img.size
         newImg = Image.new('RGB', size, "black")
+#         pxlMap = self.img.load()
+#         newp = [0] * size[0] * size[1]
         
         (r, g, b) = (5, 13, 31)
         seed = int(str(r) + str(g) + str(b))
@@ -97,25 +104,34 @@ class Window(wx.Frame):
         
         for x in xrange(size[0]):
             for y in xrange(size[1]):
-                oldColour = self.img.getpixel((x, y))
                 (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
-                
+                (R, G, B) = self.img.getpixel((x, y))
+#                 (R, G, B) = pxlMap[x, y]
+                 
+                if ((x + y) % 3) == 0:
+                    oldColour = (R, G, B)
+                elif ((x + y) % 3) == 1:
+                    oldColour = (G, B, R)
+                else:
+                    oldColour = (B, R, G)
+                     
                 newImg.putpixel((xx, yy), oldColour)
-                wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
+#                 newp[xx + yy * size[0]] = oldColour
                 
                 if self.progressDlg.GetTitle() == "Cancelling...":
                     break
+            
+            wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
             if self.progressDlg.GetTitle() == "Cancelling...":
                 break
         
-        newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
-        
         if not self.progressDlg.GetTitle() == "Cancelling...":
-            wx.CallAfter(self.progressDlg.Destroy)
+#             newImg.putdata(newp)
+            newImg.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
             self.img = newImg
             wx.CallAfter(self.showImage)
-        else:
-            wx.CallAfter(self.progressDlg.Destroy)
+       
+        wx.CallAfter(self.progressDlg.Destroy)
         
 ################################################################################
     
@@ -137,13 +153,21 @@ class Window(wx.Frame):
         for x in xrange(size[0]):
             for y in xrange(size[1]):
                 (xx, yy) = positions.pop(random.randint(0, len(positions) - 1))
-                oldColour = self.img.getpixel((xx, yy))
+                    
+                (R, G, B) = self.img.getpixel((xx, yy))
+                
+                if ((x + y) % 3) == 0:
+                    oldColour = (R, G, B)
+                elif ((x + y) % 3) == 1:
+                    oldColour = (B, R, G)
+                else:
+                    oldColour = (G, B, R)
                 
                 newImg.putpixel((x, y), oldColour)
-                wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
                 
                 if self.progressDlg.GetTitle() == "Cancelling...":
                     break
+            wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * x) / size[0]))
             if self.progressDlg.GetTitle() == "Cancelling...":
                 break
         
