@@ -19,6 +19,7 @@ import os
 import random
 import threading
 import numpy as np
+import time
 from scipy.misc import fromimage
 from scipy.misc import toimage
 
@@ -81,10 +82,86 @@ class Window(wx.Frame):
         self.SetMenuBar(self.menuBar)
         
         self.Bind(wx.EVT_MENU, self.openImage, id=101)
+        self.Bind(wx.EVT_MENU, self.threadyThreadMaster, id=102)
         self.Bind(wx.EVT_MENU, self.encryptMessage, id=201)
         self.Bind(wx.EVT_MENU, self.encryptImage, id=202)
         self.Bind(wx.EVT_MENU, self.decryptMessage, id=301)
         self.Bind(wx.EVT_MENU, self.decryptImage, id=302)
+        
+################################################################################
+
+    def threadyThreadMaster(self, event):
+        
+        self.progressDlg = GaugeFrame(self, title="0%", maximum=100)
+        self.progressDlg.Show()
+        self.progressDlg.Center()
+        workThread = threading.Thread(target=self.threadyThread, args=() )
+        workThread.start()
+        
+################################################################################
+    
+    def iterator(self, data, positions, x, pc):
+        updated = False
+        for y in xrange(len(data)):
+            (xx, yy) = positions[y]
+            (R, G, B) = data[y]
+              
+            if ((x + y) % 3) == 0:
+                oldColour = (R, G, B)
+            elif ((x + y) % 3) == 1:
+                oldColour = (G, B, R)
+            else:
+                oldColour = (B, R, G)
+
+            self.newData[yy, xx] = oldColour
+            
+            if float(y) / len(data) > pc and not updated:
+                updated = True
+                wx.CallAfter(self.progressDlg.updateGauge, int(float(100 * y) / len(data)))
+            
+            if self.progressDlg.GetTitle() == "Cancelling...":
+                break
+        
+        self.tCount += 1
+        
+################################################################################
+    
+    def threadyThread(self):
+         
+        size = self.img.size
+        data = fromimage(self.img)
+        self.newData = np.zeros((size[1], size[0], 3))
+         
+        (r, g, b) = (5, 13, 31)
+        seed = int(str(r) + str(g) + str(b))
+        random.seed(seed)
+        self.tCount = 0
+         
+        positions = []
+        for x in xrange(size[0]):
+            for y in xrange(size[1]):
+                positions.append((x, y))
+         
+        for x in xrange(size[0]):
+            
+            randPositions = []
+            for z in xrange(size[1]):
+                randPositions.append(positions.pop(random.randint(0, len(positions) - 1)))
+            workThread = threading.Thread(target=self.iterator, args=(data[:,x], randPositions, x, float(x)/size[0]) )
+            workThread.start()
+            if self.progressDlg.GetTitle() == "Cancelling...":
+                break
+            
+        while self.tCount < size[0]:
+            if self.progressDlg.GetTitle() == "Cancelling...":
+                break
+
+        if self.progressDlg.GetTitle() != "Cancelling...":
+            self.img = toimage(self.newData)
+            self.img.putpixel((size[0] - 1, size[1] - 1), (r, g, b))
+            wx.CallAfter(self.showImage)
+            
+        wx.CallAfter(self.progressDlg.Destroy)
         
 ################################################################################
     
@@ -360,9 +437,9 @@ class Window(wx.Frame):
             # This returns a Python list of files that were selected.
             paths = dlg.GetPaths()
             self.img = Image.open(paths[0])
+            self.showImage()
 
         dlg.Destroy()
-        self.showImage()
         
 ################################################################################
 
