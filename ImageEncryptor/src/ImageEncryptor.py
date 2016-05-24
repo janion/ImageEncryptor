@@ -19,7 +19,6 @@ import os
 import random
 import threading
 import numpy as np
-import time
 from scipy.misc import fromimage
 from scipy.misc import toimage
 
